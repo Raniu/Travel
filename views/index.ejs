@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <style>
+        path{
+            fill: #AAB9FF;
+            stroke: white;
+            stroke-width: 1.5px;
+        }
+
+        path:hover{
+            fill: #8F7CEE;
+        }
+
+        #map .active{
+            fill: #2fa4e7;
+        }
+    </style>
+    <title>Travel</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Alex+Brush" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/open-iconic-bootstrap.min.css">
+    <link rel="stylesheet" href="/css/animate.css">
+
+    <link rel="stylesheet" href="/css/owl.carousel.min.css">
+    <link rel="stylesheet" href="/css/owl.theme.default.min.css">
+    <link rel="stylesheet" href="/css/magnific-popup.css">
+
+    <!--<link rel="stylesheet" href="/css/aos.css">-->
+
+    <link rel="stylesheet" href="/css/ionicons.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet"> <!--CDN 링크 -->
+
+    <link rel="stylesheet" href="/css/bootstrap-datepicker.css">
+    <!--<link rel="stylesheet" href="/css/jquery.timepicker.css">-->
+
+
+    <link rel="stylesheet" href="/css/flaticon.css">
+    <link rel="stylesheet" href="/css/icomoon.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="http://d3js.org/d3.v5.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/jquery-migrate-3.0.1.min.js"></script>
+    <script src="/js/popper.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/jquery.easing.1.3.js"></script>
+    <script src="/js/jquery.waypoints.min.js"></script>
+    <script src="/js/jquery.stellar.min.js"></script>
+    <script src="/js/owl.carousel.min.js"></script>
+    <script src="/js/jquery.magnific-popup.min.js"></script>
+    <!--<script src="/js/aos.js"></script>-->
+    <script src="/js/jquery.animateNumber.min.js"></script>
+    <script src="/js/bootstrap-datepicker.js"></script>
+    <!--<script src="/js/jquery.timepicker.min.js"></script>-->
+    <script src="/js/scrollax.min.js"></script>
+    <!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBVWaKrjvy3MaE7SQ74_uJiULgl1JY0H2s&sensor=false"></script>
+    <script src="js/google-map.js"></script> -->
+    <script src="/js/main.js"></script>
+</head>
+<script>
+    var KOREA_JSON_DATA_URL = "https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2018/json/skorea-provinces-2018-topo-simple.json";
+
+    function initialize(){
+        /*
+        AOS.init({
+            duration: 800,
+            easing: 'slide'
+        });
+        */
+        d3_korea_map( '#map');
+    }
+    var projection, path, svg,
+        geoJson, features, bounds, center,
+        map, places;
+    function d3_korea_map( _mapContainerId){
+        var WIDTH, HEIGHT,
+            CENTERED,
+            MAP_CONTAINER_ID = _mapContainerId,
+            KOREA_PROVINCE_OBJECT = 'skorea_provinces_2018_geo';
+
+        var SPECIAL_CITIES = ['서울특별시', '인천광역시', '대전광역시', '대구광역시', '부산광역시', '울산광역시', '광주광역시', '세종특별자치시', '제주특별자치도'];
+
+
+        function create(){
+            HEIGHT = document.querySelector("#map").offsetHeight;
+            WIDTH = document.querySelector("#map").offsetWidth;
+
+            console.log( 'Map scale', {'height': HEIGHT, 'width': WIDTH});
+
+            projection = d3.geoMercator().translate( [WIDTH / 2, HEIGHT / 2]);
+            path = d3.geoPath().projection( projection);
+
+            svg = d3.select( MAP_CONTAINER_ID).append( "svg")
+                .attr( "width", WIDTH)
+                .attr( "height", HEIGHT);
+
+            map = svg.append( "g").attr( "id", "map"),
+            places = svg.append( "g").attr( "id", "places");
+
+            d3.json( KOREA_JSON_DATA_URL).then( function( _data){
+                geoJson = topojson.feature( _data, _data.objects[ KOREA_PROVINCE_OBJECT]);
+                features = geoJson.features;
+
+                bounds = d3.geoBounds( geoJson);
+                center = d3.geoCentroid( geoJson);
+
+                var distance = d3.geoDistance( bounds[0], bounds[1]);
+
+                var scale = HEIGHT / distance / Math.sqrt(2) * 1.3;
+
+                projection.scale( scale).center( center);
+
+                console.log( "center", center);
+                console.log( "scale", scale);
+
+                map.selectAll( "path")
+                    .data( features)
+                    .enter().append( "path")
+                    .attr( "class", function(d) { console.log(d);
+                        return "municipality c " + d.properties.code;})
+                    .attr( "d", path)
+                    .on('mouseover',handleMapMouseOver)
+                    .on('mouseout',handleMapMouseOut)
+                    .on("click", handleMapClick);
+            });
+        }
+
+        function handleMapMouseOver(d, i) {
+            var centroid = path.centroid( d);
+            x = centroid[0];
+            y = centroid[1];
+            let lx = Math.floor(x);
+            let ly = Math.floor(y);
+            svg.append("text")
+            .attr('id', `t${lx}-${ly}-${i}`)
+            .attr('x', function () {return x;})
+            .attr('y', function () {return y;})
+            .text(function() {
+                return d.properties.name;
+            })
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "20px")
+            .attr("font-weight", "bold")
+            .attr("fill", "black");
+        }
+        function handleMapMouseOut(d, i) {
+            var centroid = path.centroid( d);
+            x = centroid[0];
+            y = centroid[1];
+            let lx = Math.floor(x);
+            let ly = Math.floor(y);
+            d3.select(`#t${lx}-${ly}-${i}`).remove();
+        }
+        function handleMapClick(d) {
+            console.log(d.properties.name);
+            if (d.properties.name == "서울특별시") {
+                location.href = "/region/seoul"
+            }
+            if (d.properties.name == "인천광역시") {
+                location.href = "/region/incheon";
+            }
+            if (d.properties.name == "경기도") {
+                location.href = "/region/Gyeonggi";
+            }
+            if (d.properties.name == "강원도") {
+                location.href = "/region/gangwon";
+            }
+            if (d.properties.name == "충청북도") {
+                location.href = "/region/chungbuk";
+            }
+            if (d.properties.name == "충청남도") {
+                location.href = "/region/chungnam";
+            }
+            if (d.properties.name == "전라북도") {
+                location.href = "/region/jeonbuk";
+            }
+            if (d.properties.name == "광주광역시") {
+                location.href = "/region/gwangju";
+            }
+            if (d.properties.name == "전라남도") {
+                location.href = "/region/jeonnam";
+            }
+            if (d.properties.name == "경상남도") {
+                location.href = "/region/gyeongnam";
+            }
+            if (d.properties.name == "경상북도") {
+                location.href = "/region/gyeongbuk";
+            }
+            if (d.properties.name == "대구광역시") {
+                location.href = "/region/daegu";
+            }
+            if (d.properties.name == "울산광역시") {
+                location.href = "/region/ulsan";
+            }
+            if (d.properties.name == "부산광역시") {
+                location.href = "/region/busan";
+            }
+            if (d.properties.name == "제주특별자치도") {
+                location.href = "/region/jeju";
+            }
+            if (d.properties.name == "대전광역시") {
+                location.href = "/region/daejeon";
+            }
+            if (d.properties.name == "세종특별자치시") {
+                location.href = "/region/sejong";
+            }
+        }
+        /*
+        function province_clicked_event( d){
+            var x, y, zoomLevel;
+
+            if( d && CENTERED != d){
+                var centroid = path.centroid( d);
+                x = centroid[0];
+                y = centroid[1];
+                if( d.properties.name == '제주특별자치도' || d.properties.name == '인천광역시')
+                    zoomLevel = 10;
+                else if( SPECIAL_CITIES.indexOf( d.properties.name) != -1)
+                    zoomLevel = 15;
+                else
+                    zoomLevel = 3;
+                CENTERED = d;
+                console.log('centered', CENTERED);
+            } else {
+                x = WIDTH / 2;
+                y = HEIGHT / 2;
+                zoomLevel = 1;
+                CENTERED = null;
+            }
+
+            map.selectAll( "path")
+                .classed( "active", CENTERED && function(d) { return d === CENTERED;});
+
+            map.transition()
+                .duration( 750)
+                .attr( "transform", "translate(" + WIDTH / 2 + "," + HEIGHT / 2 + ")scale(" + zoomLevel + ")translate(" + -x + "," + -y + ")")
+                .style( "stroke-width", 1.5 / zoomLevel + "px");
+        }
+        */
+        create();
+    }
+    </script>
+
+
+<body onload="initialize()">
+    <!-- nav -->
+    <nav class="navbar navbar-expand-lg navbar-dark ftco_navbar bg-dark ftco-navbar-light" id="ftco-navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/">LOGO</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#ftco-nav" aria-controls="ftco-nav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="oi oi-menu"></span> Menu
+            </button>
+
+            <div class="collapse navbar-collapse" id="ftco-nav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active"><a href="/" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="/about.html" class="nav-link">About</a></li>
+                    <li class="nav-item"><a href="/blog.html" class="nav-link">BLOG</a></li>
+                    <li class="nav-item">
+                        <a href="/search.html" class="nav-link"><i class="fas fa-search"></i></a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="/cart" class="nav-link"><i class="fas fa-heart"></i></a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="/profiles" class="nav-link"><i class="fas fa-user-circle fa-lg"></i></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- END nav -->
+    
+    <div class="hero-wrap js-fullheight" style="background-image: url('/images/bg_1.jpg'); ">
+        <div class="overlay"></div>
+        <div class="container">
+            <div class="row no-gutters js-fullheight align-items-center justify-content-start" data-scrollax-parent="true">
+                <div class="row mb-4" style="padding-top:120px">
+                    <div class="col-md-6">
+                        <div class="row no-qutters border rounded overflow-hidden flex-md-row mb-6 shadow-sm h-md-250 position-relative" style=" background-color: rgba( 255, 255, 255, 0.8 );">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row no-gutters border rounded overflow-hidden flex-md-row mb-4 shadow-sm h-md-250 position-relative" style="background-color: rgba( 255, 255, 255, 0.8 );">
+                            <div class="col p-4 d-flex flex-column position-static">
+                                <h3 class="mb-0 text-center">이달의 인기 여행지 (<%=area%>)</h3>
+                                <div class="row" style="height: 360px; overflow-y: scroll;">
+                                    <% for(loc of location) { %>
+                                        <img src="<%=loc.firstimage%>" width="100" height="100">
+                                        <img src="<%=loc.firstimage2%>" width="100" height="100">
+                                        <p> <%=loc.addr1%> </p>
+                                        <p> <%=loc.title%> </p>
+                                        <hr>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- loader -->
+    <!-- <div id="ftco-loader" class="show fullscreen"><svg class="circular" width="48px" height="48px"><circle class="path-bg" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke="#eeeeee"/><circle class="path" cx="24" cy="24" r="22" fill="none" stroke-width="4" stroke-miterlimit="10" stroke="#F96D00"/></svg></div> -->
+
+</body>
+</html>
